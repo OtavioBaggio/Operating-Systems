@@ -1,0 +1,5 @@
+Pesquise sobre Race Condition e resuma brevemente.
+
+Race condition ocorre quando duas ou mais threads acessam um recurso compartilhado simultaneamente e o resultado depende da ordem de execução — que o SO decide e não é previsível.
+O problema central é que operações como contador++ parecem simples mas são três passos internos (lê → soma → escreve). Se o escalonador trocar de thread no meio disso, um incremento se perde.
+Como evitar: proteger a seção crítica garantindo que só uma thread por vez a execute — usando synchronized, AtomicInteger ou Lock em Java.
