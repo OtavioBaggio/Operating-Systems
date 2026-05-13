@@ -1,0 +1,103 @@
+#include <pthread.h>   // Biblioteca para uso de threads POSIX
+#include <stdio.h>     // Biblioteca padrão de entrada e saída
+#include <stdlib.h>    // Biblioteca padrão geral
+
+// Quantidade de repetições que cada thread irá executar
+#define N 10000000
+
+// Variável compartilhada entre as threads
+int num = 0;
+
+// Declaração do mutex (controle de exclusão mútua)
+pthread_mutex_t m;
+
+/*
+    Função executada pelas threads
+
+    Toda função de thread deve:
+    - retornar void*
+    - receber void*
+*/
+void* contaIteracoes(void* nome) {
+
+    // Converte o argumento recebido para string
+    char* threadNome = (char*) nome;
+
+    int i;
+
+    // Loop com N iterações
+    for(i = 0; i < N; i++) {
+
+        /*
+            Início da região crítica
+
+            Apenas UMA thread por vez pode acessar
+            o trecho protegido pelo mutex
+        */
+        pthread_mutex_lock(&m);
+
+        // Incrementa variável compartilhada
+        num++;
+
+        /*
+            Libera o mutex
+
+            Outra thread agora pode acessar
+            a região crítica
+        */
+        pthread_mutex_unlock(&m);
+    }
+
+    // Exibe qual thread terminou
+    printf("Thread %s terminou\n", threadNome);
+
+    // Finaliza a thread
+    pthread_exit(NULL);
+}
+
+int main() {
+
+    // Identificadores das threads
+    pthread_t thUm, thDois;
+
+    // Inicializa o mutex
+    pthread_mutex_init(&m, NULL);
+
+    /*
+        Criação da primeira thread
+
+        Parâmetros:
+        1 - identificador da thread
+        2 - atributos da thread (NULL = padrão)
+        3 - função executada pela thread
+        4 - argumento enviado para a thread
+    */
+    pthread_create(&thUm, NULL, contaIteracoes, (void*)"Um");
+
+    // Criação da segunda thread
+    pthread_create(&thDois, NULL, contaIteracoes, (void*)"Dois");
+
+    /*
+        pthread_join faz a thread principal esperar
+        até a thread terminar
+    */
+    pthread_join(thUm, NULL);
+    pthread_join(thDois, NULL);
+
+    /*
+        Verifica se o resultado ficou correto
+
+        Cada thread soma N vezes
+        Então o resultado esperado é:
+        2 * N
+    */
+    if(num != 2 * N)
+        printf("ERRO! num = %d\n", num);
+    else
+        printf("SOMA FINAL CORRETA! num = %d\n", num);
+
+    // Destroi o mutex liberando recursos
+    pthread_mutex_destroy(&m);
+
+    return 0;
+}

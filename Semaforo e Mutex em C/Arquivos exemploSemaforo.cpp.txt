@@ -1,0 +1,147 @@
+#include <pthread.h>    // Biblioteca para criação e controle de threads
+#include <stdio.h>      // Biblioteca padrão de entrada e saída
+#include <stdlib.h>     // Biblioteca padrão geral
+#include <semaphore.h>  // Biblioteca para uso de semáforos
+
+// Número de repetições que cada thread executará
+#define N 1000000
+
+// Variável compartilhada entre as threads
+int num = 0;
+
+// Declaração do semáforo
+sem_t semaforo;
+
+/*
+    Função executada pelas threads
+
+    Toda função de thread:
+    - recebe void*
+    - retorna void*
+*/
+void* contaIteracoes(void* nome){
+
+    // Converte o argumento recebido para string
+    char* threadNome = (char*) nome;
+
+    int aux, i, valorSem;
+
+    /*
+        Cada thread executará N incrementos
+        sobre a variável compartilhada "num"
+    */
+    for(i = 0; i < N; i++){
+
+        /*
+            sem_wait()
+
+            Decrementa o semáforo.
+
+            Se o valor for:
+            - maior que 0 -> a thread entra
+            - igual a 0 -> a thread fica bloqueada
+
+            Como o semáforo inicia em 1,
+            ele funciona como exclusão mútua.
+        */
+        sem_wait(&semaforo);
+
+        /*
+            REGIÃO CRÍTICA
+
+            Apenas uma thread por vez pode
+            acessar esse trecho.
+        */
+
+        aux = num;
+        aux = aux + 1;
+        num = aux;
+
+        /*
+            sem_post()
+
+            Incrementa o semáforo,
+            liberando acesso para outra thread.
+        */
+        sem_post(&semaforo);
+    }
+
+    /*
+        Obtém o valor atual do semáforo
+
+        Normalmente será 1 no final,
+        indicando que está liberado.
+    */
+    sem_getvalue(&semaforo, &valorSem);
+
+    // Exibe qual thread terminou
+    printf("Thread %s terminou\n", threadNome);
+
+    // Exibe valor atual do semáforo
+    printf("Valor do semaforo = %d\n", valorSem);
+
+    // Finaliza a thread
+    pthread_exit(0);
+}
+
+int main(){
+
+    // Identificadores das threads
+    pthread_t thUm, thDois;
+
+    /*
+        Inicializa o semáforo
+
+        Parâmetros:
+        1 - endereço do semáforo
+        2 - 0 = compartilhado entre threads do mesmo processo
+        3 - valor inicial do semáforo
+
+        Valor 1:
+        funciona como exclusão mútua
+        (semáforo binário)
+    */
+    sem_init(&semaforo, 0, 1);
+
+    /*
+        Criação da primeira thread
+
+        Parâmetros:
+        1 - identificador da thread
+        2 - atributos (0 = padrão)
+        3 - função executada pela thread
+        4 - argumento enviado para a thread
+    */
+    pthread_create(&thUm, 0, contaIteracoes, (void*)"Um");
+
+    // Criação da segunda thread
+    pthread_create(&thDois, 0, contaIteracoes, (void*)"Dois");
+
+    /*
+        pthread_join()
+
+        Faz a thread principal esperar
+        até as threads terminarem.
+    */
+    pthread_join(thUm, NULL);
+    pthread_join(thDois, NULL);
+
+    /*
+        Cada thread soma N vezes.
+
+        Resultado esperado:
+        2 * N
+    */
+    if(num != 2 * N)
+        printf("ERRO! num = %d\n", num);
+    else
+        printf("OK! SOMA FINAL CORRETA! num = %d\n", num);
+
+    // Destroi o semáforo liberando recursos
+    sem_destroy(&semaforo);
+
+    // Finalização da thread principal
+    printf("Fim da thread principal\n");
+
+    return 0;
+}
